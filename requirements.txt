@@ -1,0 +1,6 @@
+opencv-python
+chumpy
+imageio
+tqdm
+matplotlib
+scikit-image
