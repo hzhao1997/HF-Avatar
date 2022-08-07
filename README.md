@@ -39,7 +39,7 @@ Then the generated data should be organized as follows:
 ----normal
 ------subject_name
 ```
-We provide the sample data in this [link](https://drive.google.com/file/d/1og3eaBTVrvdXaMsMnQv6WHn0II6euxCG/view?usp=sharing).
+We provide the sample data in this [link](https://drive.google.com/file/d/1CY2ABZKFdLYFV64E_KFXW87rNhkYDRVT/view?usp=sharing).
 
 # Usage
 First, to generate initial geometry by running:
