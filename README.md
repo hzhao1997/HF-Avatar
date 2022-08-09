@@ -1,75 +1,69 @@
-# High-Fidelity Human Avatars from a Single RGB Camera
-### [Project Page](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/)  | [Paper](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/main.pdf) | [Supp](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/supp.pdf)
+# Neural 3D Mesh Renderer (CVPR 2018)
 
-# Installation
+This repo contains a PyTorch implementation of the paper [Neural 3D Mesh Renderer](http://hiroharu-kato.com/projects_en/neural_renderer.html) by Hiroharu Kato, Yoshitaka Ushiku, and Tatsuya Harada.
+It is a port of the [original Chainer implementation](https://github.com/hiroharu-kato/neural_renderer) released by the authors.
+Currently the API is the same as in the original implementation with some smalls additions (e.g. render using a general 3x4 camera matrix, lens distortion coefficients etc.). However it is possible that it will change in the future.
 
+The library is fully functional and it passes all the test cases supplied by the authors of the original library.
+Detailed documentation will be added in the near future.
+## Requirements
+Python 2.7+ and PyTorch 0.4.0.
+
+The code has been tested only with PyTorch 0.4.0, there are no guarantees that it is compatible with older versions.
+Currently the library has both Python 3 and Python 2 support.
+
+**Note**: In some newer PyTorch versions you might see some compilation errors involving AT_ASSERT. In these cases you can use the version of the code that is in the branch *at_assert_fix*. These changes will be merged into master in the near future.
+## Installation
+You can install the package by running
 ```
-conda create -n Avatar python==3.6.8
-conda install pytorch==1.7.0 torchvision==0.8.0 cudatoolkit=11.0 -c pytorch
-or conda install pytorch==1.6.0 torchvision==0.7.0 cudatoolkit=10.2 -c pytorch
-
-pip install -r requirements.txt
-
-wget https://github.com/facebookresearch/pytorch3d/archive/refs/tags/v0.4.0.zip
-cd pytorch3d
-pip install -e .
-
-cd thirdparty/neural_renderer_pytorch
-python setup.py install 
-
+pip install neural_renderer_pytorch
 ```
-Please make sure your gcc version > 7.5 !
-
-Download the assets files from [here](https://drive.google.com/file/d/1uXH7_V1Gw5H9wP-aRjh9srwzHnin1G0S/view?usp=sharing), unzip it and move them to the `assets` folder. 
-
-Download the pre-trained model from [here](https://drive.google.com/file/d/1mtLkVpqhWA1O_GMScG8l7dPaelPfv-BW/view?usp=sharing), unzip it and move them to the `checkpoints` folder.
-
-# Data Preparation
-You first need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), [PifuHD](https://github.com/facebookresearch/pifuhd) and [MODNet](https://github.com/ZHKKKe/MODNet) to generate 2d joints, normal and mask to train our model. 
-Then the generated data should be organized as follows:
+Since running install.py requires PyTorch, make sure to install PyTorch before running the above command.
+## Running examples
 ```
---data_dir
-----frames_mat
-------subject_name
-----2d_joints
-------subject_name
---------json
-----mask_mat
-------subject_name
-----normal
-------subject_name
-```
-We provide the sample data in this [link](https://drive.google.com/file/d/1CY2ABZKFdLYFV64E_KFXW87rNhkYDRVT/view?usp=sharing).
-
-# Usage
-First, to generate initial geometry by running:
-```
-python dynamic_offsets_runner.py --root_dir $data_dir --name $subject_name --device_id $device_id
-```
-Then, to generate texture map by running:
-```
-python texture_generation.py --root_dir $data_dir --name $subject_name --device_id $device_id
+python ./examples/example1.py
+python ./examples/example2.py
+python ./examples/example3.py
+python ./examples/example4.py
 ```
 
-# License
-> Copyright 2022 the 3D Vision Group at the College of Intelligence and Computing,  Tianjin University. All Rights Reserved. 
-> 
-> If you use this code in you work, please cite our publications.
->  
-> Permission to use, copy, modify and distribute this software and its documentation for educational, research and non-profit purposes only. 
-> Any modification based on this work must be open source and prohibited for commercial use. 
-> You must retain, in the source form of any derivative works that you distribute, all copyright, patent, trademark, and attribution notices from the source form of this work. 
 
-# Citation
-If you find our work useful in your research, please consider citing:
+## Example 1: Drawing an object from multiple viewpoints
+
+![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example1.gif)
+
+## Example 2: Optimizing vertices
+
+Transforming the silhouette of a teapot into a rectangle. The loss function is the difference between the rendered image and the reference image.
+
+Reference image, optimization, and the result.
+
+![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example2_ref.png) ![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example2_optimization.gif) ![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example2_result.gif)
+
+## Example 3: Optimizing textures
+
+Matching the color of a teapot with a reference image.
+
+Reference image, result.
+
+![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example3_ref.png) ![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example3_result.gif)
+
+## Example 4: Finding camera parameters
+
+The derivative of images with respect to camera pose can be computed through this renderer. In this example the position of the camera is optimized by gradient descent.
+
+From left to right: reference image, initial state, and optimization process.
+
+![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example4_ref.png) ![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example4_init.png) ![](https://raw.githubusercontent.com/hiroharu-kato/neural_renderer/master/examples/data/example4_result.gif)
+
+
+## Citation
+
 ```
-@inproceedings{zhao2022avatar,
-  author = {Hao Zhao and Jinsong Zhang and Yu-Kun Lai and Zerong Zheng and Yingdi Xie and Yebin Liu and Kun Li},
-  title = {High-Fidelity Human Avatars from a Single RGB Camera},
-  booktitle = {CVPR},
-  year={2022},
+@InProceedings{kato2018renderer
+    title={Neural 3D Mesh Renderer},
+    author={Kato, Hiroharu and Ushiku, Yoshitaka and Harada, Tatsuya},
+    booktitle={The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    year={2018}
 }
 ```
-
-# Acknowlegement
-We borrow some code from [NeuralTexture](https://github.com/SSRSGJYD/NeuralTexture), [LWG](https://github.com/svip-lab/impersonator). Thanks for their great contribtuions.
