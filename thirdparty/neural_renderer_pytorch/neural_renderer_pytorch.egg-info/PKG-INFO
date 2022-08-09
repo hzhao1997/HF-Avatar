@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: neural-renderer-pytorch
+Version: 1.1.3
+Summary: PyTorch implementation of "A 3D mesh renderer for neural networks"
+Home-page: UNKNOWN
+Author: Nikolaos Kolotouros
+Author-email: nkolot@seas.upenn.edu
+License: MIT License
+Description: UNKNOWN
+Platform: UNKNOWN
