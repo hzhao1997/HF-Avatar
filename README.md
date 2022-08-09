@@ -1,7 +1,7 @@
 # High-Fidelity Human Avatars from a Single RGB Camera
 ### [Project Page](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/)  | [Paper](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/main.pdf) | [Supp](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/supp.pdf)
 
-# Requirement
+# Installation
 
 ```
 conda create -n Avatar python==3.6.8
@@ -14,12 +14,18 @@ wget https://github.com/facebookresearch/pytorch3d/archive/refs/tags/v0.4.0.zip
 cd pytorch3d
 pip install -e .
 
-cd externel
+cd thirdparty/neural_renderer_pytorch
+python setup.py install 
 
 ```
 Please make sure your gcc version > 7.5 !
+
+Download the assets files from [here](https://drive.google.com/file/d/1uXH7_V1Gw5H9wP-aRjh9srwzHnin1G0S/view?usp=sharing), unzip it and move them to the `assets` folder. 
+
+Download the pre-trained model from [here](https://drive.google.com/file/d/1mtLkVpqhWA1O_GMScG8l7dPaelPfv-BW/view?usp=sharing), unzip it and move them to the `checkpoints` folder.
+
 # Data Preparation
-You first need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) or other pose estimation methods and segmentation or matting method to generate 2d joints and mask to train our model. 
+You first need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), [PifuHD](https://github.com/facebookresearch/pifuhd) and [MODNet](https://github.com/ZHKKKe/MODNet) to generate 2d joints, normal and mask to train our model. 
 Then the generated data should be organized as follows:
 ```
 --data_dir
@@ -30,12 +36,15 @@ Then the generated data should be organized as follows:
 --------json
 ----mask_mat
 ------subject_name
+----normal
+------subject_name
 ```
-We provide the sample data in this link: https://drive.google.com/file/d/1og3eaBTVrvdXaMsMnQv6WHn0II6euxCG/view?usp=sharing
-# Training
+We provide the sample data in this [link](https://drive.google.com/file/d/1CY2ABZKFdLYFV64E_KFXW87rNhkYDRVT/view?usp=sharing).
+
+# Usage
 First, to generate initial geometry by running:
 ```
-python differential_optimization.py --root_dir $data_dir --name $subject_name --device_id $device_id
+python dynamic_offsets_runner.py --root_dir $data_dir --name $subject_name --device_id $device_id
 ```
 Then, to generate texture map by running:
 ```
@@ -63,4 +72,4 @@ If you find our work useful in your research, please consider citing:
 ```
 
 # Acknowlegement
-We borrow some code from [NeuralTexture](https://github.com/SSRSGJYD/NeuralTexture). Thanks for their great contribtuions.
+We borrow some code from [NeuralTexture](https://github.com/SSRSGJYD/NeuralTexture), [LWG](https://github.com/svip-lab/impersonator). Thanks for their great contribtuions.
