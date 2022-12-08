@@ -1,6 +1,10 @@
 # High-Fidelity Human Avatars from a Single RGB Camera
 ### [Project Page](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/)  | [Paper](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/main.pdf) | [Supp](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/supp.pdf)
 
+# TODO
+Negative feedback by some users. It seems that the fitted pose on some input is bad which causes the poor quality of texture, and I will update this module later.
+
+
 # Installation
 
 ```
@@ -51,14 +55,6 @@ Then, to generate texture map by running:
 python texture_generation.py --root_dir $data_dir --name $subject_name --device_id $device_id
 ```
 
-# License
-> Copyright 2022 the 3D Vision Group at the College of Intelligence and Computing,  Tianjin University. All Rights Reserved. 
-> 
-> If you use this code in you work, please cite our publications.
->  
-> Permission to use, copy, modify and distribute this software and its documentation for educational, research and non-profit purposes only. 
-> Any modification based on this work must be open source and prohibited for commercial use. 
-> You must retain, in the source form of any derivative works that you distribute, all copyright, patent, trademark, and attribution notices from the source form of this work. 
 
 # Citation
 If you find our work useful in your research, please consider citing:
