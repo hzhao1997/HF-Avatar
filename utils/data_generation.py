@@ -7,6 +7,8 @@ import cv2
 import tqdm
 import argparse
 
+import pickle as pkl
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,6 +17,8 @@ from smpl_model.batch_smpl_torch import SMPLModel
 from utils.Render import Render
 from utils.general import tensor2numpy, numpy2tensor
 from smpl_model.smpl_np import SMPLModel as SMPLModelNUMPY
+
+from geometry_model.lib import write_obj
 
 # get front and back image
 def select_keyframes(json_dir):
@@ -262,24 +266,42 @@ class UVMapGenerator:
         self.device = device
         self.isupsample = True
         self.root_dir = root_dir
+
+        self.name = name
+
         uv = np.load('./assets/uv.npy')
         self.uv = torch.from_numpy(np.expand_dims(uv, axis=0))
         # uv = uv.repeat(1, 1, 1, 1)
 
         # num = (int)(name.split('_')[-1])
         # self.num = num - num % 8
-        model_path = './assets/neutral_smpl.pkl' if self.isupsample == False else './assets/upsample_neutral_smpl.pkl'
+        model_path = './assets/smpl/neutral_smpl.pkl' if self.isupsample == False else \
+            './assets/upsmpl/neutral_smpl.pkl'
         self.smpl = SMPLModel(device = self.device, model_path=model_path, use_posematrix=False)
 
         # self.smpl = SMPLModel(device = self.device, model_path='./assets/neutral_smpl.pkl', use_posematrix=False) \
         #     if self.isupsample == False \
         #     else UPSMPLModel(device = self.device, model_path='./assets/upsample_neutral_smpl.pkl', use_posematrix=False)
-        self.pose = numpy2tensor(np.load(src_data_path + '/pose.npy')).to(self.device)
-        self.betas = numpy2tensor(np.load(src_data_path + '/betas.npy')).to(self.device)
-        self.trans = numpy2tensor(np.load(src_data_path + '/trans.npy')).to(self.device)
-        self.offset = numpy2tensor(np.load(src_data_path + '/offsets.npy')).to(self.device)
 
-        self.name = name
+
+        self.pose = numpy2tensor(np.load(f'{src_data_path}/pose.npy')).to(self.device)
+        self.betas = numpy2tensor(np.load(f'{src_data_path}/betas.npy')).to(self.device)
+        self.trans = numpy2tensor(np.load(f'{src_data_path}/trans.npy')).to(self.device)
+        self.offset = numpy2tensor(np.load(f'{src_data_path}/offsets.npy')).to(self.device)
+
+
+        # -------------------------------
+        vert = self.smpl(pose=self.pose[0:0 + 1],
+                         betas=self.betas[0:1],
+                         trans=self.trans[0:0 + 1],
+                         displacements=self.offset[0:0 + 1])
+
+        f = np.loadtxt('./assets/smpl_f_ft_vt/smpl_f.txt')
+        ft = np.loadtxt('./assets/smpl_f_ft_vt/smpl_ft.txt')
+        vt = np.loadtxt('./assets/smpl_f_ft_vt/smpl_vt.txt')
+
+        os.makedirs(f'./results/final_texture/', exist_ok=True)
+        write_obj(vs=tensor2numpy(vert[0]), vt=vt, fs=f, ft=ft, path=f'./results/final_texture/{name}.obj', write_mtl=True)
         pass
 
     def generate_uv(self, target_uv_path, target_ref_path=None, img_size=1024, pose_seq = 'src', generate_ref=False):
@@ -332,7 +354,7 @@ class UVMapGenerator:
                 #                             trans=self.trans[pose_idx:pose_idx+1], displacements=self.offset[pose_idx:pose_idx+1])
                 uvs = self.render.get_uv_img(verts[pose_idx], output_path='vis_uv')  # .squeeze()
                 uv = uvs[0]
-                np.savez_compressed(target_uv_path + '/' + str(pose_idx + 1).zfill(4), uv)
+                np.savez_compressed(f'{target_uv_path}/{str(pose_idx + 1).zfill(4)}', uv)
 
                 if generate_ref == True:
                     tar_vertice = copy.deepcopy(verts[pose_idx])
@@ -362,12 +384,12 @@ class UVPositionalMapGenerator:
         self.fs = np.loadtxt('./assets/smpl_f_ft_vt/smpl_f.txt').astype(np.int32)
         self.fts = np.loadtxt('./assets/smpl_f_ft_vt/smpl_ft.txt').astype(np.int32)
         self.vts = np.loadtxt('./assets/smpl_f_ft_vt/smpl_vt.txt').astype(np.float32)
-        self.smpl = SMPLModelNUMPY(model_path='./assets/neutral_smpl.pkl', use_posematrix=False)
+        self.smpl = SMPLModelNUMPY(model_path='./assets/smpl/neutral_smpl.pkl', use_posematrix=False)
 
         # base_path = '../results/diff_rendering/{}_upsample_ground/stage1/'.format(name)
-        self.pose = np.load(src_data_path + '/pose.npy').astype(np.float32)
-        self.betas = np.load(src_data_path + '/betas.npy').astype(np.float32)
-        self.trans = np.load(src_data_path + '/trans.npy').astype(np.float32)
+        self.pose = np.load(f'{src_data_path}/pose.npy').astype(np.float32)
+        self.betas = np.load(f'{src_data_path}/betas.npy').astype(np.float32)
+        self.trans = np.load(f'{src_data_path}/trans.npy').astype(np.float32)
         # self.offsets = np.load(src_data_path + '/offsets.npy').astype(np.float32)
 
         self.mean_trans = np.mean(self.trans, axis=0).reshape([3])

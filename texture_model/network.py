@@ -138,6 +138,35 @@ class up(nn.Module):
         x1 = self.conv(x1)
         return x1
 
+class unet(nn.Module):
+    def __init__(self, input_channels, output_channels, norm='batch'):
+        super(unet, self).__init__()
+        self.down1 = down(input_channels, 64, norm=norm)
+        self.down2 = down(64, 128, norm=norm)
+        self.down3 = down(128, 256, norm=norm)
+        self.down4 = down(256, 512, norm=norm)
+        self.down5 = down(512, 512, norm=norm)
+
+        self.up1 = up(512, 512, concat=False, norm=norm)
+        self.up2 = up(1024, 512, norm=norm)
+        self.up3 = up(768, 256, norm=norm)
+        self.up4 = up(384, 128, norm=norm)
+        self.up5 = up(128, output_channels, concat=False, final=True, norm=norm)
+
+    def forward(self, x):
+        x1 = self.down1(x)
+        x2 = self.down2(x1)
+        x3 = self.down3(x2)
+        x4 = self.down4(x3)
+        x5 = self.down5(x4)
+
+        x = self.up1(x5, None)
+        x = self.up2(x, x4)
+        x = self.up3(x, x3)
+        x = self.up4(x, x2)
+        x = self.up5(x, None)
+
+        return x
 
 class ref_concat_unet(nn.Module):
     def __init__(self, input_channels, output_channels, norm='batch'):
@@ -188,14 +217,15 @@ class neural_rendering_network(nn.Module):
         self.feature_num = feature_num
 
         self.texture = Texture(W, H, feature_num)
-        self.renderer = ref_concat_unet(feature_num, 3, norm=norm) # norm=norm
+
+        self.renderer = ref_concat_unet(feature_num, 3, norm=norm)  # norm=norm
 
         init_weights(self.renderer, 'kaiming')
 
     def forward(self, uv_map, ref):
-
         x = self.texture(uv_map)
         x = torch.clamp(x, 0.0, 1.0)
+
         y = self.renderer(x, ref)
         y = torch.clamp(y, 0.0, 1.0)
 

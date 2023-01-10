@@ -108,7 +108,7 @@ class Render:
 
         if tex_path is not None:
             tex = np.expand_dims(cv2.imread(tex_path ), axis=0)
-            texture_image = torch.from_numpy(tex/255.0).type(torch.float).to(self.device) * 2.0
+            texture_image = torch.from_numpy(tex / 255.0).type(torch.float).to(self.device) * 2.0
             self.texture = TexturesUV(texture_image, self.fts, self.vts)
 
         self.cnt = 0
@@ -147,10 +147,10 @@ class Render:
 
         img = cv2.flip(img, 1)
         if output_path is not None:
-            os.makedirs("./results/" + output_path, exist_ok=True)
-            cv2.imwrite("./results/" + output_path + "/uv_renderd_{}.png".format(self.cnt + 1), img * 255)
+            os.makedirs(f"./results/{output_path}", exist_ok=True)
+            cv2.imwrite(f"./results/{output_path}/uv_renderd_{self.cnt + 1}.png", img * 255)
         else:
-            cv2.imwrite("./results/vis_uv/uv_renderd_{}.png".format(self.cnt+1), img * 255)
+            cv2.imwrite(f"./results/vis_uv/uv_renderd_{self.cnt + 1}.png", img * 255)
 
         img = img[:,:,::-1]
         img = img[:,:,0:2]

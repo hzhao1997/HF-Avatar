@@ -96,9 +96,9 @@ class Get_sharpen(nn.Module):
 def get_tex(path, name, shape=(256, 256), dilation=False):
     # tex = cv2.imread("./texture/{}.jpg".format(name))
     if path is not None:
-        tex = cv2.imread(path + '{}.png'.format(name))
+        tex = cv2.imread(f'{path}{name}.png')
     else:
-        tex = cv2.imread("./texture/{}.png".format(name))
+        tex = cv2.imread(f'./texture/{name}.png')
 
 
     # if dilation == True:
@@ -120,8 +120,9 @@ def save_tex(model, path=None, name=None, texture_dim = 16):
     texture1 = torch.cat(texture1, dim=0)
     texture1_img = texture1[:3, :, :].detach().cpu().numpy()
     texture1_img = np.transpose(texture1_img, [1, 2, 0])
+
     if path is not None:
-        cv2.imwrite(path + '{}.png'.format(name), texture1_img[:, :, ::-1] * 255)
+        cv2.imwrite(f'{path}{name}.png', texture1_img[:, :, ::-1] * 255)
     else:
-        cv2.imwrite("./texture/{}.png".format(name), texture1_img[:, :, ::-1] * 255)
+        cv2.imwrite(f'./texture/{name}.png', texture1_img[:, :, ::-1] * 255)
 

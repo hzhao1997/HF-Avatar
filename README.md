@@ -1,10 +1,6 @@
 # High-Fidelity Human Avatars from a Single RGB Camera
 ### [Project Page](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/)  | [Paper](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/main.pdf) | [Supp](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/supp.pdf)
 
-# TODO
-Negative feedback by some users. It seems that the fitted pose on some input is bad which causes the poor quality of texture, and I will update this module later.
-
-
 # Installation
 
 ```
@@ -24,12 +20,58 @@ python setup.py install
 ```
 Please make sure your gcc version > 7.5 !
 
-Download the assets files from [here](https://drive.google.com/file/d/1uXH7_V1Gw5H9wP-aRjh9srwzHnin1G0S/view?usp=sharing), unzip it and move them to the `assets` folder. 
+Download the assets files from [here](https://drive.google.com/file/d/1uXH7_V1Gw5H9wP-aRjh9srwzHnin1G0S/view?usp=sharing), unzip it, and move them to the `assets` folder. 
 
-Download the pre-trained model from [here](https://drive.google.com/file/d/1mtLkVpqhWA1O_GMScG8l7dPaelPfv-BW/view?usp=sharing), unzip it and move them to the `checkpoints` folder.
+Download the pre-trained model from [here](https://drive.google.com/file/d/1mtLkVpqhWA1O_GMScG8l7dPaelPfv-BW/view?usp=sharing), unzip it, and move them to the `checkpoints` folder.
+
+Besides, we adopt the pose initialization of [octopus](https://github.com/thmoa/octopus). But the deep learning framework of octopus is not the same as our work, Therefore, you need to create a new conda environment for octopus.
+```
+conda create -n octopus python==2.7
+conda install tensorflow-gpu=1.13.1 keras=2.2.4 cudatoolkit=10.0
+```
+The environment of octopus needs [dirt](https://github.com/pmh47/dirt). We recommend you install dirt by:
+```
+cd dirt
+mkdir build ; cd build
+cmake ../csrc
+make
+cd ..
+pip install -e .
+```
+and you need to adjust the parameter [arch](https://github.com/pmh47/dirt/blob/95f58504c1ccf70b0d0502de81821842bc19ffd2/csrc/CMakeLists.txt#L41) according to your graphics card, or the compile may fail.
 
 # Data Preparation
-You first need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), [PifuHD](https://github.com/facebookresearch/pifuhd) and [MODNet](https://github.com/ZHKKKe/MODNet) to generate 2d joints, normal and mask to train our model. 
+The size of frame is set to 1024x1024 uniformly. We fill the input frame by:
+```
+def fill_frame(frame):
+	h, w = frame.shape[0], frame.shape[1]
+	if h > w:
+	    _pad = np.zeros([h, int((h - w) / 2), 3])
+	    frame = np.concatenate([_pad, frame, _pad], axis=1)
+	elif h < w:
+	    _pad = np.zeros([int((w - h) / 2), w, 3])
+	    frame = np.concatenate([_pad, frame, _pad], axis=0)
+	    frame = np.transpose(frame, [1, 0, 2])
+	frame = cv2.resize(frame, (1024, 1024))
+	return frame
+```
+The proportion of people in the image should not be too small. If you cannot guarantee the proportion of people during recording, you had better crop the image before filling the frame. We crop the frame by:
+```
+def crop_frame(frame, bounding_box):
+	# bounding_box['y_min'], bounding_box['y_max'], bounding_box['x_min'], bounding_box['x_max'] means the top, bottom, left, right position of human in the whole video.
+
+	m_pixel = 30
+    bounding_box['y_min'] = max(bounding_box['y_min'] - m_pixel, 0)
+    bounding_box['y_max'] = min(bounding_box['y_max'] + m_pixel, h)
+    bounding_box['x_min'] = max(bounding_box['x_min'] - m_pixel, 0)
+    bounding_box['x_max'] = min(bounding_box['x_max'] + m_pixel, w)
+	frame = frame[bounding_box['y_min']:bounding_box['y_max'],
+				  bounding_box['x_min']:bounding_box['x_max']]
+
+	return frame
+```
+
+Then you need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), [PifuHD](https://github.com/facebookresearch/pifuhd) and [MODNet](https://github.com/ZHKKKe/MODNet) to generate 2d joints, normal and mask to train our model. 
 Then the generated data should be organized as follows:
 ```
 --data_dir
@@ -46,11 +88,16 @@ Then the generated data should be organized as follows:
 We provide the sample data in this [link](https://drive.google.com/file/d/1CY2ABZKFdLYFV64E_KFXW87rNhkYDRVT/view?usp=sharing).
 
 # Usage
-First, to generate initial geometry by running:
+First, the pose initialization by running:
+```
+cd thirdparty/octopus 
+python _infer_single.py --root_dir $data_dir --name $subject_name
+```
+Then, to generate initial geometry by running:
 ```
 python dynamic_offsets_runner.py --root_dir $data_dir --name $subject_name --device_id $device_id
 ```
-Then, to generate texture map by running:
+Finally, to generate the texture map by running:
 ```
 python texture_generation.py --root_dir $data_dir --name $subject_name --device_id $device_id
 ```

@@ -19,8 +19,10 @@ from texture_model.lib import Get_sharpen, get_tex, save_tex
 from utils.data_generation import UVMapGenerator
 from utils.general import setup_seed, numpy2tensor, tensor2numpy
 
+
 class BaseTrainer:
-    def __init__(self, device, img_dir, uv_dir, ref_dir=None, name=None, length=None, batch_size=None, tmp_path='./results'):
+    def __init__(self, device, img_dir, uv_dir, ref_dir=None, name=None,
+                 length=None, batch_size=None, tmp_path='./results'):
         self.device = device
         self.img_dir, self.uv_dir, self.ref_dir = img_dir, uv_dir, ref_dir  # self.data_dir
 
@@ -38,17 +40,15 @@ class BaseTrainer:
 
         self.checkpoint_path = './checkpoints'
 
-        self.pretrained_checkpoint_path = self.checkpoint_path + '/renderer.pt'
+        self.pretrained_checkpoint_path = f'{self.checkpoint_path}/renderer.pt'
         self.save_checkpoint_path = f'{tmp_path}/checkpoints' # self.checkpoint_path # + '/'
 
         self.coarse_texture_path = f'{tmp_path}/coarse_texture/'
         self.final_texture_path = f'{tmp_path}/final_texture/'
-        self.render_path = f'{tmp_path}/render/{self.name}'
 
         os.makedirs(self.save_checkpoint_path, exist_ok=True)
         os.makedirs(self.coarse_texture_path, exist_ok=True)
         os.makedirs(self.final_texture_path, exist_ok=True)
-        os.makedirs(self.render_path, exist_ok=True)
 
         self.build_loss_function()
 
@@ -58,7 +58,7 @@ class BaseTrainer:
     def build_loss_function(self):
         self.L1Loss = nn.L1Loss()
         self.MSELoss = nn.MSELoss()
-        self.perceptualnet = perceptual_network().to(device)
+        self.perceptualnet = perceptual_network().to(self.device)
         pass
     def build_network(self):
         pass
@@ -84,7 +84,7 @@ class NeuralTextureTrainer(BaseTrainer):
 
     def build_network(self):
         self.model = neural_texture_network(self.texturew, self.textureh, self.texture_dim)
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
         self.model.train()
 
     def build_optimizer(self):
@@ -121,7 +121,7 @@ class NeuralTextureTrainer(BaseTrainer):
                 loss.backward()
                 self.optimizer.step()
                 if step % 50 == 0:
-                    print('step {}: l1_loss1 {} '.format(step, l1_loss1.item()))
+                    print(f'step {step}: l1_loss1 {l1_loss1.item()} ')
 
             save_tex(self.model, self.coarse_texture_path, self.name)
         pass
@@ -134,7 +134,7 @@ class NeuralRenderingTrainer(BaseTrainer):
     def build_network(self, mode='train'):
         self.model = neural_rendering_network(self.texturew, self.textureh, self.texture_dim,
                                               norm='instance')
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
         if mode == 'train':
             self.model.train()
         elif mode == 'test':
@@ -159,20 +159,20 @@ class NeuralRenderingTrainer(BaseTrainer):
     def build_dataloader(self, mode = 'train'):
         if mode == 'train':
             self.idx_list = ['{:04d}'.format(i) for i in range(1, self.length)]
-            dataset = neural_rendering_train_dataset(self.img_dir, self.uv_dir, self.ref_dir, self.idx_list, self.name,
-                                                     self.img_size)
+            dataset = neural_rendering_train_dataset(self.img_dir, self.uv_dir, self.ref_dir,
+                                                     self.idx_list, self.name, self.img_size)
             self.dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
         elif mode == 'test':
             self.idx_list = ['{:04d}'.format(i) for i in range(1, 360)]
-            dataset = neural_rendering_test_dataset(self.img_dir, self.uv_dir, self.ref_dir, self.idx_list, self.name,
-                                                    self.img_size)
+            dataset = neural_rendering_test_dataset(self.img_dir, self.uv_dir, self.ref_dir,
+                                                    self.idx_list, self.name, self.img_size)
             self.dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4)
 
     def load_weights(self, mode='train'):
         if mode == 'train':
             tex = get_tex(path=self.coarse_texture_path, name=self.name).cuda()
 
-            pretrained_dict = torch.load(os.path.join(self.checkpoint_path, 'texture.pt'))
+            pretrained_dict = torch.load(f'{self.checkpoint_path}/texture.pt')
             pretrained_dict['textures.0.layer1'] = torch.unsqueeze(tex[:, 0, :, :], axis=0)  # texture.textures.0.layer4
             pretrained_dict['textures.1.layer1'] = torch.unsqueeze(tex[:, 1, :, :], axis=0)
             pretrained_dict['textures.2.layer1'] = torch.unsqueeze(tex[:, 2, :, :], axis=0)
@@ -195,12 +195,12 @@ class NeuralRenderingTrainer(BaseTrainer):
             print(f'Epoch {epoch_idx}')
             for step, samples in enumerate(self.dataloader):
 
-                images, uv_maps, ref_img = samples
-                images, uv_maps, ref_img = images.to(self.device), uv_maps.to(self.device), ref_img.to(self.device)
+                images, uv_maps, ref_images = samples
+                images, uv_maps, ref_images = images.to(self.device), uv_maps.to(self.device), ref_images.to(self.device)
 
                 self.optimizer.zero_grad()
 
-                sampled_texture, preds = self.model(uv_maps, ref_img)
+                sampled_texture, preds = self.model(uv_maps, ref_images)
 
                 l1_loss1 = self.L1Loss(sampled_texture, images)
                 l1_loss2 = self.L1Loss(preds, images)
@@ -216,33 +216,34 @@ class NeuralRenderingTrainer(BaseTrainer):
                 loss.backward()
                 self.optimizer.step()
                 if step % 20 == 0:
-                    print('step {}: l1_loss1 {} l1_loss2 {} precept_loss {}'.format(step,
-                        l1_loss1.item(), l1_loss2.item(), perceptualLoss.item()))
+                    print(f'step {step}: l1_loss1 {l1_loss1.item()} '
+                          f'l1_loss2 { l1_loss2.item()} precept_loss {perceptualLoss.item()}')
 
             torch.save(self.model.texture.state_dict(),  f'{self.save_checkpoint_path}/texture_{self.name}.pt')
             torch.save(self.model.renderer.state_dict(), f'{self.save_checkpoint_path}/renderer_{self.name}.pt')
 
         pass
 
-    def test(self):
+    def test(self, render_path):
         torch.set_grad_enabled(False)
         self.build_network(mode='test')
         self.build_dataloader(mode='test')
         self.load_weights(mode='test')
+        os.makedirs(render_path, exist_ok=True)
+        os.makedirs(f'{render_path}{self.name}', exist_ok=True)
         with torch.no_grad():
             for samples in tqdm.tqdm(self.dataloader):
 
-                uv_maps, ref_img, idxs = samples
-                uv_maps, ref_img = uv_maps.to(self.device), ref_img.to(self.device)
-                sampled_texture, preds = self.model(uv_maps, ref_img)  #
-
+                uv_maps, ref_images, idxs = samples
+                uv_maps, ref_images = uv_maps.to(self.device), ref_images.to(self.device)
+                sampled_texture, preds = self.model(uv_maps, ref_images)  #
 
                 for i in range(len(idxs)):
                     rgb_image = np.clip(np.transpose(tensor2numpy(sampled_texture[i]), [1, 2, 0]), 0, 1)
                     image = np.clip(np.transpose(tensor2numpy(preds[i]), [1, 2, 0]), 0, 1)
 
-                    cv2.imwrite(self.render_path + f'/sampled_texture_{idxs[i]}.png', rgb_image[:, :, ::-1] * 255)
-                    cv2.imwrite(self.render_path + f'/render_{idxs[i]}.png', image[:, :, ::-1] * 255)
+                    cv2.imwrite(f'{render_path}{self.name}/sampled_texture_{idxs[i]}.png', rgb_image[:, :, ::-1] * 255)
+                    cv2.imwrite(f'{render_path}{self.name}/render_{idxs[i]}.png', image[:, :, ::-1] * 255)
         pass
 
 class TexOptimizer(BaseTrainer):
@@ -260,7 +261,7 @@ class TexOptimizer(BaseTrainer):
         texturew, textureh = self.texturew * 2, self.textureh * 2
 
         self.model = neural_texture_network(texturew, textureh)
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
         self.model.train()
 
     def build_optimizer(self):
@@ -287,8 +288,9 @@ class TexOptimizer(BaseTrainer):
 
     def load_weights(self):
         texture_size = self.texturew
-        tex = get_tex(self.coarse_texture_path, name, shape=((int)(texture_size / 4), (int)(texture_size / 4))).to(device)
-        pretrained_dict = torch.load(self.checkpoint_path + '/texture_512.pt')
+        tex = get_tex(self.coarse_texture_path, self.name,
+                      shape=((int)(texture_size / 4), (int)(texture_size / 4))).to(self.device)
+        pretrained_dict = torch.load(f'{self.checkpoint_path}/texture_512.pt')
         # ----------------------------
         pretrained_dict['textures.0.layer1'] = torch.unsqueeze(tex[:, 0, :, :], dim=0)  # texture.textures.0.layer4
         pretrained_dict['textures.1.layer1'] = torch.unsqueeze(tex[:, 1, :, :], dim=0)
@@ -318,14 +320,14 @@ class TexOptimizer(BaseTrainer):
         epoch = 10  # 10
         torch.set_grad_enabled(True)
         for epoch_idx in range(1, 1 + epoch):
-            print('Epoch {}'.format(epoch_idx))
+            print(f'Epoch {epoch_idx}')
             step = 0
             self.adjust_learning_rate(self.optimizer, epoch_idx, self.lr)
 
             for samples in self.dataloader:
                 images, uv_maps = samples
-                images = images.to(device)
-                uv_maps = uv_maps.to(device)
+                images = images.to(self.device)
+                uv_maps = uv_maps.to(self.device)
                 # ref_img = ref_img.cuda()
                 # face_mask = face_mask.cuda()
                 self.optimizer.zero_grad()
@@ -336,18 +338,17 @@ class TexOptimizer(BaseTrainer):
                 self.optimizer.step()
                 step += images.shape[0]
                 if step % 50 == 0:
-                    print('step {}: l1_loss1 {} '.format(step, loss.item()))
+                    print(f'step {step}: l1_loss1 {loss.item()} ')
 
             save_tex(self.model, path=self.final_texture_path, name=self.name)
         pass
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir', type=str, default='/mnt/8T/zh/vrc')
-    parser.add_argument('--name', type=str, default='Body2D_2037_344')
-    #   Body2D_2010_378 Body2D_2061_507   Body2D_2041_308  Body2D_2031_313 Body2D_2070_380
-    parser.add_argument('--device_id', type=str, default='2')
+    parser.add_argument('--root_dir', type=str, default='/mnt/8T/zh/vrc') # /mnt/8T/zh/zte
+    parser.add_argument('--name', type=str, default='Body2D_2061_507')
+    #   Body2D_2010_378 Body2D_2061_507   Body2D_2041_308  Body2D_2031_313
+    parser.add_argument('--device_id', type=str, default='3')
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_id # '2'
@@ -359,31 +360,31 @@ if __name__ == '__main__':
     else:
         device = torch.device("cpu")
 
-
     root_dir = args.root_dir # '/mnt/8T/zh/vrc/'
     name = args.name # 'Body2D_2070_380' # 'Body2D_2040_499'
-    print(name)
-    #
+    print(f"deal with {args.name}")
 
     length = len(os.listdir(f'{root_dir}/frames_mat/{name}'))
     length = length - length % 8
     process_flow = ['0', '1', '2', '3', '4']
-    # process_flow = ['1', '2', '3', '4']
-    # process_flow = ['2', '3', '4']
-    # process_flow = ['3', '4']
-    # process_flow = ['4']
+    # process_flow = [ '2', '3', '4']
+
     tmp_path = './results'
-    src_path = f'{tmp_path}/dynamic_offsets/'  # new_diff_rendering
+    src_path = f'{tmp_path}/dynamic_offsets/'
+    # src_path = f'{tmp_path}/diff_optiming/'
+    # src_path = '/mnt/8T/zh/zte/params/'
     img_path = f'{root_dir}/frames_mat/'
     uv_path, test_uv_path, double_test_uv_path = f'{tmp_path}/uvs/', f'{tmp_path}/test_uvs/', f'{tmp_path}/double_test_uvs/'
     ref_path, test_ref_path = f'{tmp_path}/ref/', f'{tmp_path}/test_ref/'
     render_path = f'{tmp_path}/render/'
+
     if '0' in process_flow:
+        generate_ref = True
         uv_generator = UVMapGenerator(device=device, root_dir=root_dir, src_data_path=src_path + name, name=name)
         uv_generator.generate_uv(target_uv_path=uv_path + name, target_ref_path=ref_path + name,
-                                 pose_seq='src', img_size=1024, generate_ref=True)
+                                 pose_seq='src', img_size=1024, generate_ref=generate_ref)
         uv_generator.generate_uv(target_uv_path=test_uv_path + name, target_ref_path=test_ref_path+name,
-                                 pose_seq='self_rotate', img_size=1024, generate_ref=True)
+                                 pose_seq='self_rotate', img_size=1024, generate_ref=generate_ref)
         uv_generator.generate_uv(target_uv_path=double_test_uv_path + name,
                                  pose_seq='self_rotate', img_size=2048, generate_ref=False)
 
@@ -398,9 +399,10 @@ if __name__ == '__main__':
     if '3' in process_flow:
         neural_rendering_model_test = NeuralRenderingTrainer(device, img_dir=None,
                                                              uv_dir=test_uv_path, ref_dir=test_ref_path, length=length, name=name)
-        neural_rendering_model_test.test()
+        neural_rendering_model_test.test(render_path=render_path)
     if '4' in process_flow:
         tex_optimizer_model = TexOptimizer(device, img_dir=render_path, uv_dir=double_test_uv_path,
                                            name=name, batch_size=4)
         tex_optimizer_model.optimize()
+
 

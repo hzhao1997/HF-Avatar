@@ -17,14 +17,14 @@ from torch.optim import Adam
 from utils.general import setup_seed
 
 from geometry_model.network import smpl_tpose_layer, rodrigues, dynamic_offsets_network
-from geometry_model.loss import TemporalLoss, LaplacianLoss, SymmetryLoss, EDGELoss
+from geometry_model.loss import TemporalLoss, LaplacianLoss, EDGELoss
 from dataset.make_dataset import dynamic_offsets_dataset
 from texture_model.lib import Get_sharpen
 from utils.general import numpy2tensor, tensor2numpy
 from utils.data_generation import UVPositionalMapGenerator
 
 from differential_optimization import DiffOptimRunner
-from pose_estimation import AposeEstimator
+
 
 class GeoTrainer():
     def __init__(self, device, root_dir, name, length, batch_size=1, tmp_path=None,
@@ -45,10 +45,10 @@ class GeoTrainer():
 
         self.load_path = load_path
         self.base_path = base_path
-        self.checkpoints_path = base_path + name + '/'
-        self.mid_results_path = base_path + name + '_mid_results/'
-        self.results_path = base_path + name + '_final_results/'
-        self.save_path = base_path + name + '/'
+        self.checkpoints_path = f'{base_path}{name}/'
+        self.mid_results_path = f'{base_path}{name}_mid_results/'
+        self.results_path = f'{base_path}{name}_final_results/'
+        self.save_path = f'{base_path}{name}/'
         self.tmp_path = tmp_path
 
         os.makedirs(self.base_path, exist_ok=True)
@@ -144,10 +144,9 @@ class GeoTrainer():
         model_output = self.network.forward(item, input['naked_vertice_uv'])
         loss_output = self.loss(model_output, ground_truth)
         if step % 20 == 0:
-            print('step {}: l1_loss {} sil_loss {} lap_loss {} normal_loss {} edge_loss {} move_loss {}'.format(
-                step, loss_output['l1_loss'].item(), loss_output['sil_loss'].item(), loss_output['lap_loss'].item(),
-                loss_output['normal_loss'].item(), loss_output['edge_loss'].item(), loss_output['move_loss'].item(),
-            ))
+            print(f"step {step}: l1_loss {loss_output['l1_loss'].item()} sil_loss {loss_output['sil_loss'].item()} "
+                  f"lap_loss {loss_output['lap_loss'].item()} normal_loss {loss_output['normal_loss'].item()} "
+                  f"edge_loss {loss_output['edge_loss'].item()} move_loss {loss_output['move_loss'].item()}" )
         if step % 80 == 0:
             self.visualization(model_output, ground_truth)
 
@@ -165,7 +164,7 @@ class GeoTrainer():
         self.build_loss_function()
 
         for epoch_idx in range(epoch):
-            print('--------------- Epoch: {} ---------------'.format(epoch_idx))
+            print(f'--------------- Epoch: {epoch_idx} ---------------')
             for step, (item, input, ground_truth) in enumerate(self.dataloader):
                 item = item.to(self.device)
                 for key in input.keys():
@@ -211,24 +210,24 @@ class GeoTrainer():
             mi = tensor2numpy(model_output['mesh_images'])
             ri = tensor2numpy(model_output['pred_imgs'])
 
-            os.makedirs(self.results_path  + '/obj', exist_ok=True)
-            os.makedirs(self.results_path  + '/img', exist_ok=True)
+            os.makedirs(f'{self.results_path }/obj', exist_ok=True)
+            os.makedirs(f'{self.results_path }/img', exist_ok=True)
             write_obj = False
             if write_obj == True:
                 for i in range(v.shape[0]):
-                    self.network.write_v_obj(v=v[i], path=self.results_path + '/obj/{}.obj'.format(str(_idx[i] + 1).zfill(4)))
+                    self.network.write_v_obj(v=v[i], path=f'{self.results_path}/obj/{str(_idx[i] + 1).zfill(4)}.obj')
             if step == 0:
-                self.network.write_v_obj(v=v[0], path=self.results_path + '/obj/{}.obj'.format(str(_idx[0] + 1).zfill(4)))
+                self.network.write_v_obj(v=v[0], path=f'{self.results_path}/obj/{str(_idx[0] + 1).zfill(4)}.obj')
             for i in range(mi.shape[0]):
                 img = mi[i, :, :, :3]
-                cv2.imwrite(self.results_path + '/img/mesh_img_{}.png'.format(str(_idx[i]+1).zfill(4)), img * 255)
+                cv2.imwrite(f'{self.results_path}/img/mesh_img_{str(_idx[i]+1).zfill(4)}.png', img * 255)
                 img = ri[i, :, :, :3]
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(self.results_path + '/img/render_img_{}.png'.format(str(_idx[i]+1).zfill(4)), img * 255)
+                cv2.imwrite(f'{self.results_path}/img/render_img_{str(_idx[i]+1).zfill(4)}.png', img * 255)
 
         self.network.save_parameters(save_path=self.save_path)
         offsets = np.concatenate(offsets, axis=0)
-        np.save(self.save_path + 'offsets.npy', offsets)
+        np.save(f'{self.save_path}offsets.npy', offsets)
 
     def visualization(self, model_output, ground_truth):
         a = tensor2numpy(model_output['pred_images'])
@@ -254,15 +253,12 @@ class GeoTrainer():
             img = d[i, :, :]
             cv2.imwrite(f'{self.mid_results_path}sil_{idx}_gt.png', img * 255)
 
-            # do_network.smpl.smpl.write_obj(v_shaped[i], './results/mid_img/v_shaped_{}.obj'.format(i))
-            # do_network.smpl.smpl.write_obj(v_shaped_personal[i], mid_results_path + 'v_shaped_personal_{}.obj'.format(i))
-            # do_network.smpl.smpl.write_obj(v_offsets[i], mid_results_path + 'v_offset_{}.obj'.format(i))
-            self.network.write_v_obj(model_output['v'][i],  f'{self.mid_results_path}v_{i}.obj')
-            self.network.write_v_obj(model_output['v_shaped_personal'][i],
-                                   f'{self.mid_results_path}v_shaped_personal_{i}.obj')
+            # self.network.write_v_obj(model_output['v'][i],  f'{self.mid_results_path}v_{i}.obj')
+            # self.network.write_v_obj(model_output['v_shaped_personal'][i],
+            #                        f'{self.mid_results_path}v_shaped_personal_{i}.obj')
 
         # self.network.write_v_obj(model_output['v_shaped'][0], self.mid_results_path + 'v_shaped.obj')
-        # do_network.smpl.smpl.write_obj(v_shaped_personal[0], './results/mid_img/v_shaped_personal.obj')
+
         if self.use_normal == True:
             m = tensor2numpy(model_output['pred_normal_images'])
             n = tensor2numpy(ground_truth['gt_normal_images'])
@@ -280,14 +276,14 @@ class GeoTrainer():
                 cv2.imwrite(f'{self.mid_results_path}normal_img_{idx}_gt.png', normal_img)  # img * 255
 
     def save_weights(self, epoch_idx=None):
-        save_path = self.checkpoints_path + f'do_network_{epoch_idx}.pt' if epoch_idx is not None \
-            else self.checkpoints_path + f'do_network.pt'
+        save_path = f'{self.checkpoints_path}do_network_{epoch_idx}.pt' if epoch_idx is not None \
+            else f'{self.checkpoints_path}do_network.pt'
         torch.save(self.network.state_dict(), save_path)
 
 
     def load_weights(self, epoch_idx=None):
-        load_path = self.checkpoints_path + f'do_network_{epoch_idx}.pt' if epoch_idx is not None \
-            else self.checkpoints_path + f'do_network.pt'
+        load_path = f'{self.checkpoints_path}do_network_{epoch_idx}.pt' if epoch_idx is not None \
+            else f'{self.checkpoints_path}do_network.pt'
         self.network.load_state_dict(torch.load(load_path))
 
         pass
@@ -295,7 +291,7 @@ class GeoTrainer():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', type=str, default='/mnt/8T/zh/vrc') # '/home/coder/vrc/'
-    parser.add_argument('--name', type=str, default='Body2D_2037_344')  #  Body2D_2027_286  Body2D_2043_288  Body2D_2064_287 C0029 2040_01    Body2D_2070_380
+    parser.add_argument('--name', type=str, default='Body2D_2061_507')  #  Body2D_2027_286  Body2D_2043_288  Body2D_2064_287 C0029 2040_01    Body2D_2070_380
     parser.add_argument('--batch_size', type=int, default=3)
     parser.add_argument('--device_id', type=str, default='0')
     parser.add_argument('--tmp_path', type=str, default='./results')
@@ -310,27 +306,26 @@ if __name__ == '__main__':
     else:
         device = torch.device("cpu")
 
-    print("deal with {}".format(args.name))
+    print(f"deal with {args.name}")
     length = len(os.listdir(f'{args.root_dir}/frames_mat/{args.name}'))
     length = length - length % 8
     print(length)
 
     setup_seed(20)
-    process_flow = ['0', '1', '2', '3']
-    # process_flow = ['1', '2', '3', '4']
-
+    process_flow = [ '1', '2', '3']
+    # process_flow = ['2', '3']
     # process_flow = ['3']
     tmp_path = args.tmp_path
-    if '0' in process_flow:
-        apose_estimator = AposeEstimator(device, args.root_dir)
-        apose_estimator.test(args.name, save_path=f'{tmp_path}/params/{args.name}/')
     if '1' in process_flow:
-        runner = DiffOptimRunner(device=device, root_dir=args.root_dir, name=args.name, length=length,
-                            load_path=f'{tmp_path}/params/{args.name}/',
-                            save_path=f'{tmp_path}/diff_optiming/{args.name}/')
-        # ------------------ optimize pose, trans, and shape ------------------
-        runner.optimize_joints(stage='0')
-        # trainer.test(stage='1')
+        runner = DiffOptimRunner(device=device, root_dir=args.root_dir,
+                                 name=args.name, length=length,
+                                 base_path=f'{args.tmp_path}/diff_optiming/'
+                            )
+        runner.optimize(load_path=f'{args.root_dir}/params/{args.name}/', # f'{tmp_path}/params/{args.name}/',
+                        save_path=f'{tmp_path}/diff_optiming/{args.name}/',
+                        is_load_from_octopus=True,
+                        epoch=30
+        )
     if '2' in process_flow:
         # target_path = './results'
         uv_pos_generator = UVPositionalMapGenerator(src_data_path=f'{tmp_path}/diff_optiming/{args.name}')

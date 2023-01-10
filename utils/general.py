@@ -1,7 +1,7 @@
-import argparse
-import torch
-import numpy as np
 import random
+
+import numpy as np
+import torch
 from torch.nn import init
 
 def setup_seed(seed):
@@ -11,24 +11,14 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+
 def numpy2tensor(m, target_type=np.float32):
     return torch.from_numpy(m.astype(target_type))
+
 
 def tensor2numpy(m):
     return m.detach().cpu().numpy()
 
-def adjust_learning_rate(optimizer, epoch, original_lr):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    if epoch == 0:
-        lr = original_lr
-    elif epoch <= 20:
-        lr = original_lr * pow(0.95, epoch) # * epoch
-    elif epoch <= 1000:
-        lr = 0.0001 # original_lr * 0.2
-
-    for param_group in optimizer.param_groups[:4]:
-        param_group['lr'] = lr
-    # optimizer.param_groups[1]['lr'] = lr
 
 def init_weights(net, init_type='normal', init_gain=0.02):
     """Initialize network weights.
@@ -62,3 +52,13 @@ def init_weights(net, init_type='normal', init_gain=0.02):
 
     print('initialize network with %s' % init_type)
     net.apply(init_func)
+
+import cv2
+import numpy as np
+
+if __name__ == '__main__':
+    mask = cv2.imread('/mnt/8T/zh/vrc/mask_mat/Body2D_2008_inner_346/0001.png')[:,:,0]
+    # cv2.findContours(mask,  cv2.CHAIN_APPROX_NONE)
+    white_pos = np.where(mask > 250)
+    min_y, max_y, min_x, max_x = np.min(white_pos[0]), np.max(white_pos[0]), np.min(white_pos[1]), np.max(white_pos[1])
+    pass
