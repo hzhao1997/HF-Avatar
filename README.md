@@ -1,6 +1,10 @@
 # High-Fidelity Human Avatars from a Single RGB Camera
 ### [Project Page](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/)  | [Paper](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/main.pdf) | [Supp](http://cic.tju.edu.cn/faculty/likun/projects/HF-Avatar/assets/supp.pdf)
 
+# News 
+* There was a problem with pose initialization in the previous version, which causes poor texture quality. Currently, I update the code, and this problem should have been solved.
+
+
 # Installation
 
 ```
@@ -44,31 +48,31 @@ and you need to adjust the parameter [arch](https://github.com/pmh47/dirt/blob/9
 The size of frame is set to 1024x1024 uniformly. We fill the input frame by:
 ```
 def fill_frame(frame):
-	h, w = frame.shape[0], frame.shape[1]
-	if h > w:
-	    _pad = np.zeros([h, int((h - w) / 2), 3])
-	    frame = np.concatenate([_pad, frame, _pad], axis=1)
-	elif h < w:
-	    _pad = np.zeros([int((w - h) / 2), w, 3])
-	    frame = np.concatenate([_pad, frame, _pad], axis=0)
-	    frame = np.transpose(frame, [1, 0, 2])
-	frame = cv2.resize(frame, (1024, 1024))
-	return frame
+    h, w = frame.shape[0], frame.shape[1]
+    if h > w:
+	 _pad = np.zeros([h, int((h - w) / 2), 3])
+	 frame = np.concatenate([_pad, frame, _pad], axis=1)
+    elif h < w:
+	 _pad = np.zeros([int((w - h) / 2), w, 3])
+	 frame = np.concatenate([_pad, frame, _pad], axis=0)
+	 frame = np.transpose(frame, [1, 0, 2])
+    frame = cv2.resize(frame, (1024, 1024))
+    return frame
 ```
 The proportion of people in the image should not be too small. If you cannot guarantee the proportion of people during recording, you had better crop the image before filling the frame. We crop the frame by:
 ```
 def crop_frame(frame, bounding_box):
-	# bounding_box['y_min'], bounding_box['y_max'], bounding_box['x_min'], bounding_box['x_max'] means the top, bottom, left, right position of human in the whole video.
+    # bounding_box['y_min'], bounding_box['y_max'], bounding_box['x_min'], bounding_box['x_max'] means the top, bottom, left, right position of human in the whole video.
 
-	m_pixel = 30
+    m_pixel = 30
     bounding_box['y_min'] = max(bounding_box['y_min'] - m_pixel, 0)
     bounding_box['y_max'] = min(bounding_box['y_max'] + m_pixel, h)
     bounding_box['x_min'] = max(bounding_box['x_min'] - m_pixel, 0)
     bounding_box['x_max'] = min(bounding_box['x_max'] + m_pixel, w)
-	frame = frame[bounding_box['y_min']:bounding_box['y_max'],
-				  bounding_box['x_min']:bounding_box['x_max']]
+    frame = frame[bounding_box['y_min']:bounding_box['y_max'],
+		  bounding_box['x_min']:bounding_box['x_max']]
 
-	return frame
+    return frame
 ```
 
 Then you need to run [Openpose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), [PifuHD](https://github.com/facebookresearch/pifuhd) and [MODNet](https://github.com/ZHKKKe/MODNet) to generate 2d joints, normal and mask to train our model. 
