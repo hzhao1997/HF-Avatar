@@ -24,9 +24,9 @@ python setup.py install
 ```
 Please make sure your gcc version > 7.5 !
 
-Download the assets files from [here](https://drive.google.com/file/d/1uXH7_V1Gw5H9wP-aRjh9srwzHnin1G0S/view?usp=sharing), unzip it, and move them to the `assets` folder. 
+Download the assets files from [here](https://drive.google.com/file/d/1QV41Q9uBE_Xp2r34MvSABjBmq6c26c0U/view?usp=share_link), unzip it, and move them to the `assets` folder. 
 
-Download the pre-trained model from [here](https://drive.google.com/file/d/1mtLkVpqhWA1O_GMScG8l7dPaelPfv-BW/view?usp=sharing), unzip it, and move them to the `checkpoints` folder.
+Download the pre-trained model from [here](https://drive.google.com/file/d/1ykPUjFqgTjgGmMpOHD17RFMYxU0ZX4E8/view?usp=share_link), unzip it, and move them to the `checkpoints` folder.
 
 Besides, we adopt the pose initialization of [octopus](https://github.com/thmoa/octopus). But the deep learning framework of octopus is not the same as our work, Therefore, you need to create a new conda environment for octopus.
 ```
